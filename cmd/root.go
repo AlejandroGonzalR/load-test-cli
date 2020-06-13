@@ -17,14 +17,18 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+	"github.com/tcnksm/go-httpstat"
 )
 
 var cfgFile string
@@ -86,10 +90,36 @@ func initConfig() {
 }
 
 func execRequest(url string) {
+	// Create a new HTTP request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(req)
+
+	// Create a httpstat powered context
+	var result httpstat.Result
+	ctx := httpstat.WithHTTPStat(req.Context(), &result)
+	req = req.WithContext(ctx)
+
+	// Send request by default HTTP client
+	client := http.DefaultClient
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if _, err := io.Copy(ioutil.Discard, res.Body); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	res.Body.Close()
+
+	// Show the results
+	fmt.Printf("DNS lookup: %d ms\n", int(result.DNSLookup/time.Millisecond))
+	fmt.Printf("TCP connection: %d ms\n", int(result.TCPConnection/time.Millisecond))
+	fmt.Printf("TLS handshake: %d ms\n", int(result.TLSHandshake/time.Millisecond))
+	fmt.Printf("Server processing: %d ms\n", int(result.ServerProcessing/time.Millisecond))
+	fmt.Printf("Content transfer: %d ms\n", int(result.ContentTransfer(time.Now())/time.Millisecond))
 }
