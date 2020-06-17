@@ -32,26 +32,31 @@ import (
 )
 
 var cfgFile string
+var requestNum int
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
+// RootCmd represents the base command when called without any subcommands
+var RootCmd = &cobra.Command{
 	Use:   "load-test-cli",
 	Short: "Tracing HTTP GET request latency",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Fprintf(cmd.OutOrStdout(), args[0]+"\n")
+		req, _ := cmd.Flags().GetInt("request")
+
 		u, err := url.ParseRequestURI(args[0])
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		execRequest(u.String())
+		execRequest(u.String(), req)
+		return nil
 	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -60,7 +65,8 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.load-test-cli.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.load-test-cli.yaml)")
+	RootCmd.Flags().IntVarP(&requestNum, "request", "n", 1, "Number of sequential HTTP request")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -89,7 +95,7 @@ func initConfig() {
 	}
 }
 
-func execRequest(url string) {
+func execRequest(url string, request int) {
 	// Create a new HTTP request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
