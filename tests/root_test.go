@@ -19,8 +19,8 @@ type testCase map[string]struct {
 func TestRootCmd(t *testing.T) {
 	testUrl := "http://google.com"
 	tests := testCase{
-		"url param":           {args: []string{testUrl}, expected: []string{testUrl, "1"}},
-		"request number flag": {args: []string{"--request", "5", testUrl}, expected: []string{testUrl, "5"}},
+		"url param":        {args: []string{testUrl}, expected: []string{testUrl, "1"}},
+		"concurrency flag": {args: []string{"--concurrency", "5", testUrl}, expected: []string{testUrl, "5"}},
 	}
 
 	for name, test := range tests {
@@ -46,10 +46,10 @@ func execTestCmd(args []string) ([]string, error) {
 	out, err := ioutil.ReadAll(buf)
 	outString := string(out)
 	outString = strings.TrimSuffix(outString, "\n")
-	request, _ := cmd.Flags().GetInt("request")
+	c, _ := cmd.Flags().GetInt("concurrency")
 	result := []string{
 		outString,
-		strconv.Itoa(request),
+		strconv.Itoa(c),
 	}
 
 	return result, err
